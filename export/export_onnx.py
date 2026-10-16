@@ -63,8 +63,16 @@ prog.save(out, external_data=False)
 
 # ship the tokenizer + calibration config next to the graph
 shutil.copytree(os.path.join(model_dir, "tokenizer"), os.path.join(out_dir, "tokenizer"), dirs_exist_ok=True)
-json.dump({k: cfg[k] for k in ("max_len", "head_max_len", "temperature", "temperature_by_options")},
-          open(os.path.join(out_dir, "laya_config.json"), "w"), indent=1)
+out_cfg = {k: cfg[k] for k in ("max_len", "head_max_len", "temperature", "temperature_by_options")}
+# convaiinnovations/laya ships choice:11+ = 0.1006, below the runtime's [0.5, 5] clamp (receptron/laya#10).
+# 0.945 is the held-out NLL fit for the English checkpoint (NandhaKishorM/laya#1245). Only the known-bad value
+# is replaced, so a fixed upstream config passes through untouched.
+TEMP_OVERRIDES = {"choice:11+": (0.10058280825614929, 0.945)}
+for key, (bad, fixed) in TEMP_OVERRIDES.items():
+    if out_cfg["temperature_by_options"].get(key) == bad:
+        print(f"overriding {key}: {bad} -> {fixed}")
+        out_cfg["temperature_by_options"][key] = fixed
+json.dump(out_cfg, open(os.path.join(out_dir, "laya_config.json"), "w"), indent=1)
 
 # parity check
 import onnxruntime as ort  # noqa: E402
