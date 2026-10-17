@@ -21,9 +21,21 @@ matches the Python implementation to four decimal places.
 npm install @receptron/laya
 ```
 
-Node.js 20 or newer. The ONNX weights (about 1.7 GB, fp32) are downloaded from Hugging Face on first
-use and cached under `~/.cache/receptron-laya` (override with `LAYA_CACHE`). Budget roughly 2 GB of
-RAM for the loaded model plus a few hundred MB per batch of questions.
+Node.js 20 or newer; CI runs on Node 20, 22 and 24 (Linux, macOS, Windows). The `@types/node` version
+in `devDependencies` is only for type-checking this package and does not require Node 24.
+
+The ONNX weights (about 1.7 GB, fp32) are downloaded from Hugging Face on first use and cached under
+`~/.cache/receptron-laya` (override with `LAYA_CACHE`). Budget roughly 2 GB of RAM for the loaded model
+plus a few hundred MB per batch of questions.
+
+The first `Laya.load()` therefore includes that download, so time it after the cache is warm. To
+fetch the weights ahead of time (in a build step or container image), call `ensureBundle()`:
+
+```sh
+node -e 'import("@receptron/laya").then((m) => m.ensureBundle())'
+```
+
+Later loads only send a cheap freshness check and read from the cache (about 4 s on an Apple M4, [measured in #13](https://github.com/receptron/laya/issues/13)).
 
 ## Usage
 
